@@ -21,6 +21,7 @@ export default function App() {
   const [systemStatus, setSystemStatus] = useState({ database: null, openaiKeyConfigured: null, lastSeedRefresh: null });
   const [settings, setSettings] = useState(null);
   const [insights, setInsights] = useState(null);
+  const [theme, setTheme] = useState('dark');
 
   const [lastPlaced, setLastPlaced] = useState(null);
   const [error, setError] = useState('');
@@ -213,6 +214,16 @@ export default function App() {
       refreshAll().catch((e) => setError(e.message));
     }
   }, [auth.token]);
+
+  useEffect(() => {
+    if (settings?.theme) {
+      setTheme(settings.theme.toLowerCase());
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    document.body.dataset.theme = theme;
+  }, [theme]);
 
   useEffect(() => {
     if (auth.token) {
@@ -490,7 +501,13 @@ export default function App() {
   return (
     <div className="d-flex">
       <div className="sidebar p-3">
-        <div className="text-white fw-semibold mb-3">Placement System</div>
+        <div className="sidebar-navbar glass mb-3">
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="fw-semibold text-white">Placement System</div>
+            <span className="badge bg-primary">AI</span>
+          </div>
+          <div className="small text-muted">Admin Console</div>
+        </div>
         <div className="nav flex-column gap-1">
           <button className={`nav-link btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
           <button className={`nav-link btn ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')}>Students</button>
@@ -1218,6 +1235,18 @@ export default function App() {
                           <label className="form-label">Allowed Branches (CSV)</label>
                           <input className="form-control" value={settings.allowedBranches || ''}
                                  onChange={(e) => setSettings({ ...settings, allowedBranches: e.target.value })} />
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">Theme</label>
+                          <select className="form-select" value={settings.theme || 'DARK'}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setSettings({ ...settings, theme: value });
+                                    setTheme(value.toLowerCase());
+                                  }}>
+                            <option value="DARK">Dark</option>
+                            <option value="LIGHT">Light</option>
+                          </select>
                         </div>
                         <div className="col-12">
                           <div className="form-check">

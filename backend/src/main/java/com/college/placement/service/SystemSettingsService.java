@@ -29,6 +29,7 @@ public class SystemSettingsService {
         existing.setAiResumeEnabled(incoming.isAiResumeEnabled());
         existing.setAiQueryEnabled(incoming.isAiQueryEnabled());
         existing.setAiInsightsEnabled(incoming.isAiInsightsEnabled());
+        existing.setTheme(incoming.getTheme());
         existing.setUpdatedAt(LocalDateTime.now());
         return settingsRepository.save(existing);
     }

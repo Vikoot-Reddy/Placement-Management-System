@@ -25,6 +25,9 @@ public class SystemSettings {
     private boolean aiQueryEnabled = true;
     private boolean aiInsightsEnabled = true;
 
+    @Column(length = 10)
+    private String theme = "DARK";
+
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     public Long getId() {
@@ -97,6 +100,14 @@ public class SystemSettings {
 
     public void setAiInsightsEnabled(boolean aiInsightsEnabled) {
         this.aiInsightsEnabled = aiInsightsEnabled;
+    }
+
+    public String getTheme() {
+        return theme;
+    }
+
+    public void setTheme(String theme) {
+        this.theme = theme;
     }
 
     public LocalDateTime getUpdatedAt() {

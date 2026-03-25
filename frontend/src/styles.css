@@ -8,6 +8,10 @@ body {
   font-family: "Inter", "Segoe UI", sans-serif;
 }
 
+.sidebar-navbar {
+  padding: 12px 14px;
+}
+
 .glass {
   background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.35);
@@ -101,4 +105,57 @@ body {
 
 .text-muted {
   color: #cbd5f5 !important;
+}
+
+body[data-theme="light"] {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+body[data-theme="light"] .glass {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+body[data-theme="light"] .sidebar {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+body[data-theme="light"] .sidebar .nav-link {
+  color: #0f172a;
+}
+
+body[data-theme="light"] .sidebar .nav-link.active,
+body[data-theme="light"] .sidebar .nav-link:hover {
+  background: rgba(59, 130, 246, 0.15);
+  color: #0f172a;
+}
+
+body[data-theme="light"] .card .card-header {
+  color: #0f172a;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+body[data-theme="light"] .table {
+  color: #0f172a;
+}
+
+body[data-theme="light"] .table-striped > tbody > tr:nth-of-type(odd) {
+  background-color: rgba(226, 232, 240, 0.9);
+}
+
+body[data-theme="light"] .table-striped > tbody > tr:nth-of-type(even) {
+  background-color: rgba(241, 245, 249, 0.9);
+}
+
+body[data-theme="light"] .form-control,
+body[data-theme="light"] .form-select {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5f5;
+}
+
+body[data-theme="light"] .text-muted {
+  color: #475569 !important;
 }
