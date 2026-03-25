@@ -16,7 +16,21 @@ public class SystemSettingsService {
     }
 
     public SystemSettings getSettings() {
-        return settingsRepository.findAll().stream().findFirst().orElseGet(this::createDefaults);
+        SystemSettings settings = settingsRepository.findAll().stream().findFirst().orElseGet(this::createDefaults);
+        boolean needsDefaults = settings.getDefaultMinCgpa() == null || settings.getAllowedBranches() == null || settings.getTheme() == null;
+        if (needsDefaults) {
+            if (settings.getDefaultMinCgpa() == null) settings.setDefaultMinCgpa(6.0);
+            if (settings.getAllowedBranches() == null) settings.setAllowedBranches("CSE,ECE,IT,EEE,ME,CIVIL");
+            if (settings.getTheme() == null) settings.setTheme("DARK");
+            settings.setOneStudentOneCompany(true);
+            settings.setAiPredictionEnabled(true);
+            settings.setAiRecommendationEnabled(true);
+            settings.setAiResumeEnabled(true);
+            settings.setAiQueryEnabled(true);
+            settings.setAiInsightsEnabled(true);
+            settings = settingsRepository.save(settings);
+        }
+        return settings;
     }
 
     public SystemSettings updateSettings(SystemSettings incoming) {

@@ -3,8 +3,8 @@
 }
 
 body {
-  background: radial-gradient(circle at top left, #0f172a 0%, #0b1120 40%, #020617 100%);
-  color: #e2e8f0;
+  background: radial-gradient(circle at top left, #111827 0%, #0b1220 40%, #050b18 100%);
+  color: #f1f5f9;
   font-family: "Inter", "Segoe UI", sans-serif;
 }
 
@@ -13,8 +13,8 @@ body {
 }
 
 .glass {
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.5);
   backdrop-filter: blur(10px);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
   border-radius: 14px;
@@ -24,6 +24,16 @@ body {
   min-height: 100vh;
   background: rgba(2, 6, 23, 0.95);
   border-right: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.topbar {
+  height: 56px;
+  background: rgba(2, 6, 23, 0.85);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  backdrop-filter: blur(10px);
 }
 
 .sidebar .nav-link {
@@ -45,8 +55,8 @@ body {
 }
 
 .card .card-header {
-  background: rgba(15, 23, 42, 0.9);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(17, 24, 39, 0.95);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
   color: #f8fafc;
 }
 
@@ -72,13 +82,13 @@ body {
 }
 
 .form-control, .form-select {
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(148, 163, 184, 0.6);
   color: #f8fafc;
 }
 
 .form-control::placeholder {
-  color: #cbd5f5;
+  color: #dbeafe;
 }
 
 .badge.bg-secondary {
@@ -104,7 +114,15 @@ body {
 }
 
 .text-muted {
-  color: #cbd5f5 !important;
+  color: #e2e8f0 !important;
+}
+
+.form-label, .form-check-label, .table thead th {
+  color: #f1f5f9;
+}
+
+.card-body, .list-group-item {
+  color: #f1f5f9;
 }
 
 body[data-theme="light"] {
@@ -120,6 +138,11 @@ body[data-theme="light"] .glass {
 
 body[data-theme="light"] .sidebar {
   background: rgba(255, 255, 255, 0.95);
+}
+
+body[data-theme="light"] .topbar {
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.12);
 }
 
 body[data-theme="light"] .sidebar .nav-link {

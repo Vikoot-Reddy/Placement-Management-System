@@ -6,6 +6,8 @@ import com.college.placement.repository.ResumeRepository;
 import com.college.placement.repository.StudentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -26,7 +28,7 @@ public class ResumeService {
     }
 
     public Resume analyzeAndSave(Long studentId, String filename, String contentType, byte[] data) throws Exception {
-        String text = new String(data);
+        String text = extractText(filename, contentType, data);
         String analysis = openAIService.analyzeResumeText(text);
 
         Resume resume = new Resume();
@@ -57,6 +59,18 @@ public class ResumeService {
             }
         } catch (Exception ignore) {
             // Keep raw analysis in analysis field if JSON parsing fails.
+        }
+    }
+
+    private String extractText(String filename, String contentType, byte[] data) throws Exception {
+        boolean isPdf = (contentType != null && contentType.toLowerCase().contains("pdf"))
+                || (filename != null && filename.toLowerCase().endsWith(".pdf"));
+        if (!isPdf) {
+            return new String(data);
+        }
+        try (PDDocument document = PDDocument.load(data)) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            return stripper.getText(document);
         }
     }
 

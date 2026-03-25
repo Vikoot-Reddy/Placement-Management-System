@@ -32,6 +32,7 @@ async function request(path, options = {}) {
 
 export const api = {
   login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
+  register: (payload) => request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
 
   getStudents: (params) => request(`/students${toQuery(params)}`),
   addStudent: (payload) => request('/students/add', { method: 'POST', body: JSON.stringify(payload) }),
@@ -64,6 +65,7 @@ export const api = {
   recommendCompanies: (studentId) => request(`/ai/recommend/${studentId}`),
   aiQuery: (payload) => request('/ai/query', { method: 'POST', body: JSON.stringify(payload) }),
   getInsights: () => request('/analytics/insights'),
+  testOpenAI: () => request('/ai/test'),
 
   uploadResume: async (file, studentId) => {
     const formData = new FormData();

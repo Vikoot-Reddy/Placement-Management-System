@@ -30,6 +30,37 @@ public class OpenAIService {
         return apiKey != null && !apiKey.isBlank();
     }
 
+    public void testConnection() throws Exception {
+        if (!isConfigured()) {
+            throw new IllegalStateException("OPENAI_API_KEY not set");
+        }
+
+        ArrayNode input = objectMapper.createArrayNode();
+        ObjectNode msg = objectMapper.createObjectNode();
+        msg.put("role", "user");
+        msg.put("content", "Respond with OK.");
+        input.add(msg);
+
+        ObjectNode payloadNode = objectMapper.createObjectNode();
+        payloadNode.put("model", model);
+        payloadNode.set("input", input);
+
+        String payload = payloadNode.toString();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.openai.com/v1/responses"))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() >= 400) {
+            throw new IllegalStateException("OpenAI API error: " + response.statusCode() + " - " + response.body());
+        }
+    }
+
     public String analyzeResumeText(String resumeText) throws Exception {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException("OPENAI_API_KEY not set");

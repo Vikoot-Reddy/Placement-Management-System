@@ -22,6 +22,7 @@ export default function App() {
   const [settings, setSettings] = useState(null);
   const [insights, setInsights] = useState(null);
   const [theme, setTheme] = useState('dark');
+  const [openAiTest, setOpenAiTest] = useState(null);
 
   const [lastPlaced, setLastPlaced] = useState(null);
   const [error, setError] = useState('');
@@ -100,6 +101,9 @@ export default function App() {
     username: localStorage.getItem('username') || ''
   });
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [registerForm, setRegisterForm] = useState({ username: '', password: '', role: 'STUDENT' });
+  const [showRegister, setShowRegister] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const isAdmin = auth.role === 'ADMIN';
   const isOfficer = auth.role === 'PLACEMENT_OFFICER';
@@ -241,6 +245,16 @@ export default function App() {
     e.preventDefault();
     setError('');
     const res = await api.login(loginForm);
+    localStorage.setItem('token', res.token);
+    localStorage.setItem('role', res.role);
+    localStorage.setItem('username', res.username);
+    setAuth({ token: res.token, role: res.role, username: res.username });
+  };
+
+  const onRegister = async (e) => {
+    e.preventDefault();
+    setError('');
+    const res = await api.register(registerForm);
     localStorage.setItem('token', res.token);
     localStorage.setItem('role', res.role);
     localStorage.setItem('username', res.username);
@@ -389,10 +403,19 @@ export default function App() {
 
   const onUploadResume = async (e) => {
     e.preventDefault();
-    if (!resumeFile) return;
-    const res = await api.uploadResume(resumeFile, resumeStudentId || null);
-    setResumeAnalysis(res.analysis || 'No analysis returned.');
-    setResumeDetails(res);
+    setError('');
+    if (!resumeFile) {
+      setError('Please choose a resume file first.');
+      return;
+    }
+    try {
+      const res = await api.uploadResume(resumeFile, resumeStudentId || null);
+      setResumeAnalysis(res.analysis || 'No analysis returned.');
+      setResumeDetails(res);
+      setActiveTab('dashboard');
+    } catch (err) {
+      setError(err.message || 'Resume analysis failed.');
+    }
   };
 
   const onAiQuery = async (e) => {
@@ -407,6 +430,16 @@ export default function App() {
     if (!settings) return;
     const updated = await api.updateSettings(settings);
     setSettings(updated);
+  };
+
+  const onTestOpenAi = async () => {
+    setError('');
+    try {
+      const res = await api.testOpenAI();
+      setOpenAiTest(res);
+    } catch (err) {
+      setOpenAiTest({ ok: false, message: err.message || 'Test failed' });
+    }
   };
 
   const markNotificationRead = async (id) => {
@@ -480,27 +513,52 @@ export default function App() {
   if (!auth.token) {
     return (
       <div className="container py-5" style={{ maxWidth: 420 }}>
-        <h3 className="mb-3">Login</h3>
+        <h3 className="mb-3">{showRegister ? 'Create Account' : 'Login'}</h3>
         {error && <div className="alert alert-danger">{error}</div>}
-        <form onSubmit={onLogin}>
-          <div className="mb-3">
-            <label className="form-label">Username</label>
-            <input className="form-control" value={loginForm.username} onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })} required />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Password</label>
-            <input type="password" className="form-control" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} required />
-          </div>
-          <button className="btn btn-primary w-100" type="submit">Login</button>
-          <div className="text-muted small mt-3">Default users: admin/admin123, officer/officer123, student/student123</div>
-        </form>
+        {!showRegister ? (
+          <form onSubmit={onLogin}>
+            <div className="mb-3">
+              <label className="form-label">Username</label>
+              <input className="form-control" value={loginForm.username} onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })} required />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Password</label>
+              <input type="password" className="form-control" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} required />
+            </div>
+            <button className="btn btn-primary w-100" type="submit">Sign In</button>
+            <button type="button" className="btn btn-outline-light w-100 mt-2" onClick={() => setShowRegister(true)}>Create Account</button>
+            <div className="text-muted small mt-3">Default users: admin/admin123, officer/officer123, student/student123</div>
+          </form>
+        ) : (
+          <form onSubmit={onRegister}>
+            <div className="mb-3">
+              <label className="form-label">Username</label>
+              <input className="form-control" value={registerForm.username} onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })} required />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Password</label>
+              <input type="password" className="form-control" value={registerForm.password} onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })} required />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Role</label>
+              <select className="form-select" value={registerForm.role} onChange={(e) => setRegisterForm({ ...registerForm, role: e.target.value })}>
+                <option value="STUDENT">Student</option>
+                <option value="PLACEMENT_OFFICER">Placement Officer</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+            <button className="btn btn-primary w-100" type="submit">Register</button>
+            <button type="button" className="btn btn-outline-light w-100 mt-2" onClick={() => setShowRegister(false)}>Back to Sign In</button>
+          </form>
+        )}
       </div>
     );
   }
 
   return (
     <div className="d-flex">
-      <div className="sidebar p-3">
+      {sidebarOpen && (
+        <div className="sidebar p-3">
         <div className="sidebar-navbar glass mb-3">
           <div className="d-flex align-items-center justify-content-between">
             <div className="fw-semibold text-white">Placement System</div>
@@ -549,8 +607,15 @@ export default function App() {
           <button className="btn btn-sm btn-outline-light mt-3 w-100" onClick={onLogout}>Logout</button>
         </div>
       </div>
+      )}
 
       <div className="flex-grow-1">
+        <div className="topbar d-flex align-items-center justify-content-between px-3">
+          <button className="btn btn-outline-light" onClick={() => setSidebarOpen((s) => !s)}>
+            &#9776;
+          </button>
+          <div className="small text-muted">Student Placement Management System</div>
+        </div>
         <div className="container py-4">
         {error && <div className="alert alert-danger">{error}</div>}
 
@@ -672,21 +737,27 @@ export default function App() {
                     </select>
                     <button className="btn btn-outline-primary w-100 mt-2" onClick={onUploadResume}>Analyze Resume</button>
                   </div>
-                  {resumeAnalysis && (
-                    <div className="alert alert-info small" style={{ whiteSpace: 'pre-wrap' }}>
-                      {resumeAnalysis}
-                    </div>
-                  )}
-                  {resumeDetails && (
-                    <div className="mt-2 small">
-                      {resumeDetails.detectedSkills && <div><strong>Skills:</strong> {resumeDetails.detectedSkills}</div>}
-                      {resumeDetails.missingSkills && <div><strong>Missing:</strong> {resumeDetails.missingSkills}</div>}
-                      {resumeDetails.suggestions && <div><strong>Suggestions:</strong> {resumeDetails.suggestions}</div>}
-                      {resumeDetails.placementChance !== null && resumeDetails.placementChance !== undefined && (
-                        <div><strong>Placement Chance:</strong> {resumeDetails.placementChance}%</div>
-                      )}
-                    </div>
-                  )}
+                  <div className="glass p-3">
+                    <div className="fw-semibold mb-2">Analysis Results</div>
+                    {!resumeAnalysis && !resumeDetails && (
+                      <div className="text-muted small">Upload a resume to see analysis results here.</div>
+                    )}
+                    {resumeAnalysis && (
+                      <div className="alert alert-info small" style={{ whiteSpace: 'pre-wrap' }}>
+                        {resumeAnalysis}
+                      </div>
+                    )}
+                    {resumeDetails && (
+                      <div className="mt-2 small">
+                        {resumeDetails.detectedSkills && <div><strong>Skills:</strong> {resumeDetails.detectedSkills}</div>}
+                        {resumeDetails.missingSkills && <div><strong>Missing:</strong> {resumeDetails.missingSkills}</div>}
+                        {resumeDetails.suggestions && <div><strong>Suggestions:</strong> {resumeDetails.suggestions}</div>}
+                        {resumeDetails.placementChance !== null && resumeDetails.placementChance !== undefined && (
+                          <div><strong>Placement Chance:</strong> {resumeDetails.placementChance}%</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {recommendations.length > 0 && (
                     <div className="mt-3">
@@ -1318,6 +1389,12 @@ export default function App() {
                     <div className="fw-semibold">OpenAI</div>
                     <div className="text-muted small">Set OPENAI_API_KEY in backend environment to enable resume analysis.</div>
                     <div className="small">Status: {systemStatus.openaiKeyConfigured ? 'Configured' : 'Missing'}</div>
+                    <button className="btn btn-outline-info mt-2" onClick={onTestOpenAi}>Test OpenAI Key</button>
+                    {openAiTest && (
+                      <div className={`small mt-2 ${openAiTest.ok ? 'text-success' : 'text-danger'}`}>
+                        {openAiTest.message}
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-3">

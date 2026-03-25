@@ -32,6 +32,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/auth/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/ai/test").permitAll()
                 .requestMatchers(HttpMethod.GET, "/analytics/**", "/reports/**", "/notifications/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/students/**", "/companies/**", "/placement/**", "/analytics/**", "/reports/**", "/notifications/**", "/ai/**", "/resumes/**", "/admin/**", "/settings/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/ai/analyze-resume", "/ai/query", "/resumes/**")
