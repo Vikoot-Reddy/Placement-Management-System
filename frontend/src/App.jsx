@@ -18,6 +18,9 @@ export default function App() {
   const [analytics, setAnalytics] = useState({ averageCgpa: 0, placement: { total: 0, placed: 0, percentage: 0 } });
   const [branchChart, setBranchChart] = useState([]);
   const [companyChart, setCompanyChart] = useState([]);
+  const [systemStatus, setSystemStatus] = useState({ database: null, openaiKeyConfigured: null, lastSeedRefresh: null });
+  const [settings, setSettings] = useState(null);
+  const [insights, setInsights] = useState(null);
 
   const [lastPlaced, setLastPlaced] = useState(null);
   const [error, setError] = useState('');
@@ -72,6 +75,15 @@ export default function App() {
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [eligibleStudents, setEligibleStudents] = useState([]);
   const [eligibleCompanyName, setEligibleCompanyName] = useState('');
+  const [predictionMap, setPredictionMap] = useState({});
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendedStudent, setRecommendedStudent] = useState('');
+  const [resumeAnalysis, setResumeAnalysis] = useState('');
+  const [resumeDetails, setResumeDetails] = useState(null);
+  const [resumeFile, setResumeFile] = useState(null);
+  const [resumeStudentId, setResumeStudentId] = useState('');
+  const [aiQueryText, setAiQueryText] = useState('');
+  const [aiQueryResult, setAiQueryResult] = useState(null);
 
   const [assignForm, setAssignForm] = useState({
     studentId: '',
@@ -167,8 +179,33 @@ export default function App() {
     setCompanyChart(perCompany.map((r) => ({ company: r[0], count: r[1] })));
   };
 
+  const loadSettings = async () => {
+    const data = await api.getSettings();
+    setSettings(data);
+  };
+
+  const loadInsights = async () => {
+    const data = await api.getInsights();
+    setInsights(data);
+  };
+
   const refreshAll = async () => {
-    await Promise.all([loadStudents(0), loadCompanies(0), loadPlaced(), loadPlacements(), loadNotifications(), loadAnalytics()]);
+    await Promise.all([
+      loadStudents(0),
+      loadCompanies(0),
+      loadPlaced(),
+      loadPlacements(),
+      loadNotifications(),
+      loadAnalytics(),
+      loadStatus(),
+      loadSettings(),
+      loadInsights()
+    ]);
+  };
+
+  const loadStatus = async () => {
+    const data = await api.getStatus();
+    setSystemStatus(data);
   };
 
   useEffect(() => {
@@ -299,6 +336,15 @@ export default function App() {
     setLoading((l) => ({ ...l, placement: false }));
   };
 
+  const onRunSmartPlacement = async () => {
+    setError('');
+    setLoading((l) => ({ ...l, placement: true }));
+    const count = await api.runSmartPlacement();
+    setLastPlaced(count);
+    await refreshAll();
+    setLoading((l) => ({ ...l, placement: false }));
+  };
+
   const onAssignPlacement = async (e) => {
     e.preventDefault();
     setError('');
@@ -316,6 +362,40 @@ export default function App() {
     const data = await api.eligibleStudents(company.id);
     setEligibleCompanyName(company.name);
     setEligibleStudents(data || []);
+  };
+
+  const onPredict = async (studentId) => {
+    const res = await api.predictPlacement(studentId);
+    setPredictionMap((prev) => ({ ...prev, [studentId]: { probability: res.probability, tag: res.tag } }));
+  };
+
+  const onRecommend = async (studentId) => {
+    const res = await api.recommendCompanies(studentId);
+    setRecommendations(res || []);
+    const student = students.find((s) => s.id === studentId);
+    setRecommendedStudent(student ? student.name : '');
+  };
+
+  const onUploadResume = async (e) => {
+    e.preventDefault();
+    if (!resumeFile) return;
+    const res = await api.uploadResume(resumeFile, resumeStudentId || null);
+    setResumeAnalysis(res.analysis || 'No analysis returned.');
+    setResumeDetails(res);
+  };
+
+  const onAiQuery = async (e) => {
+    e.preventDefault();
+    if (!aiQueryText.trim()) return;
+    const res = await api.aiQuery({ query: aiQueryText, limit: 10 });
+    setAiQueryResult(res);
+  };
+
+  const onUpdateSettings = async (e) => {
+    e.preventDefault();
+    if (!settings) return;
+    const updated = await api.updateSettings(settings);
+    setSettings(updated);
   };
 
   const markNotificationRead = async (id) => {
@@ -355,6 +435,12 @@ export default function App() {
   const totalStudents = studentTotal;
   const totalPlaced = placedStudents.length;
   const totalUnplaced = totalStudents - totalPlaced;
+  const placementByBranchInsights = (insights?.placementByBranch || []).map((r) => ({
+    branch: r[0],
+    placed: Number(r[1]),
+    total: Number(r[2]),
+    rate: Number(r[2]) === 0 ? 0 : Math.round((Number(r[1]) * 100) / Number(r[2]))
+  }));
 
   const resetStudentFilters = () => {
     setStudentFilter({ name: '', branch: '', placed: 'all', cgpaMin: '', cgpaMax: '', companyName: '' });
@@ -402,31 +488,58 @@ export default function App() {
   }
 
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div className="container">
-          <span className="navbar-brand">Placement System</span>
-          <div className="navbar-nav">
-            <button className={`nav-link btn btn-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
-            <button className={`nav-link btn btn-link ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')}>Students</button>
-            <button className={`nav-link btn btn-link ${activeTab === 'companies' ? 'active' : ''}`} onClick={() => setActiveTab('companies')}>Companies</button>
-            <button className={`nav-link btn btn-link ${activeTab === 'placement' ? 'active' : ''}`} onClick={() => setActiveTab('placement')}>Placement</button>
-            <button className={`nav-link btn btn-link ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => setActiveTab('reports')}>Reports</button>
-            <button className={`nav-link btn btn-link ${activeTab === 'notifications' ? 'active' : ''}`} onClick={() => setActiveTab('notifications')}>Notifications</button>
-          </div>
-          <div className="text-white ms-auto d-flex gap-3 align-items-center">
-            <span className="small">{auth.username} ({auth.role})</span>
-            <button className="btn btn-sm btn-outline-light" onClick={onLogout}>Logout</button>
-          </div>
+    <div className="d-flex">
+      <div className="sidebar p-3">
+        <div className="text-white fw-semibold mb-3">Placement System</div>
+        <div className="nav flex-column gap-1">
+          <button className={`nav-link btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
+          <button className={`nav-link btn ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')}>Students</button>
+          <button className={`nav-link btn ${activeTab === 'companies' ? 'active' : ''}`} onClick={() => setActiveTab('companies')}>Companies</button>
+          <button className={`nav-link btn ${activeTab === 'placement' ? 'active' : ''}`} onClick={() => setActiveTab('placement')}>Placement</button>
+          <button className={`nav-link btn ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => setActiveTab('reports')}>Reports</button>
+          <button className={`nav-link btn ${activeTab === 'notifications' ? 'active' : ''}`} onClick={() => setActiveTab('notifications')}>Notifications</button>
+          <button className={`nav-link btn ${activeTab === 'ai-insights' ? 'active' : ''}`} onClick={() => setActiveTab('ai-insights')}>AI Insights</button>
+          <button className={`nav-link btn ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</button>
         </div>
-      </nav>
+        <div className="glass p-3 mt-4">
+          <div className="d-flex align-items-center gap-2">
+            <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
+              {auth.username ? auth.username[0].toUpperCase() : 'U'}
+            </div>
+            <div>
+              <div className="fw-semibold text-white">{auth.username}</div>
+              <div className="small text-muted">{auth.role}</div>
+            </div>
+          </div>
+          <div className="mt-3 small">
+            <div className="d-flex justify-content-between">
+              <span className="text-muted">DB</span>
+              <span className={systemStatus.database ? 'text-success' : 'text-danger'}>
+                {systemStatus.database === null ? '...' : (systemStatus.database ? 'OK' : 'DOWN')}
+              </span>
+            </div>
+            <div className="d-flex justify-content-between">
+              <span className="text-muted">OpenAI</span>
+              <span className={systemStatus.openaiKeyConfigured ? 'text-success' : 'text-danger'}>
+                {systemStatus.openaiKeyConfigured === null ? '...' : (systemStatus.openaiKeyConfigured ? 'OK' : 'MISSING')}
+              </span>
+            </div>
+            <div className="d-flex justify-content-between">
+              <span className="text-muted">Last Refresh</span>
+              <span className="text-white small">{systemStatus.lastSeedRefresh || '—'}</span>
+            </div>
+          </div>
+          <button className="btn btn-sm btn-outline-light mt-3 w-100" onClick={onLogout}>Logout</button>
+        </div>
+      </div>
 
-      <div className="container py-4">
+      <div className="flex-grow-1">
+        <div className="container py-4">
         {error && <div className="alert alert-danger">{error}</div>}
 
         <div className="row g-3 mb-4">
           <div className="col-md-3">
-            <div className="card shadow-sm">
+            <div className="card shadow-sm glass">
               <div className="card-body">
                 <div className="text-muted">Total Students</div>
                 <div className="fs-3 fw-semibold">{totalStudents}</div>
@@ -434,7 +547,7 @@ export default function App() {
             </div>
           </div>
           <div className="col-md-3">
-            <div className="card shadow-sm">
+            <div className="card shadow-sm glass">
               <div className="card-body">
                 <div className="text-muted">Placed</div>
                 <div className="fs-3 fw-semibold text-success">{totalPlaced}</div>
@@ -442,7 +555,7 @@ export default function App() {
             </div>
           </div>
           <div className="col-md-3">
-            <div className="card shadow-sm">
+            <div className="card shadow-sm glass">
               <div className="card-body">
                 <div className="text-muted">Unplaced</div>
                 <div className="fs-3 fw-semibold text-warning">{totalUnplaced}</div>
@@ -450,7 +563,7 @@ export default function App() {
             </div>
           </div>
           <div className="col-md-3">
-            <div className="card shadow-sm">
+            <div className="card shadow-sm glass">
               <div className="card-body">
                 <div className="text-muted">Companies</div>
                 <div className="fs-3 fw-semibold">{companyTotal}</div>
@@ -458,11 +571,19 @@ export default function App() {
             </div>
           </div>
         </div>
+        {canEdit && (
+          <div className="mb-3">
+            <button className="btn btn-outline-warning" onClick={() => api.refreshDataset().then(refreshAll).catch((e) => setError(e.message))}>
+              Refresh Dataset Now
+            </button>
+            <span className="small text-muted ms-2">Hourly auto-refresh is enabled.</span>
+          </div>
+        )}
 
         {activeTab === 'dashboard' && (
           <div className="row g-4">
             <div className="col-lg-6">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold">Students per Branch</div>
                 <div className="card-body" style={{ height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -477,7 +598,7 @@ export default function App() {
               </div>
             </div>
             <div className="col-lg-6">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold">Placed per Company</div>
                 <div className="card-body" style={{ height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -493,7 +614,7 @@ export default function App() {
               </div>
             </div>
             <div className="col-lg-6">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold">Placement Percentage</div>
                 <div className="card-body" style={{ height: 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -512,11 +633,57 @@ export default function App() {
               </div>
             </div>
             <div className="col-lg-6">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold">Average CGPA</div>
                 <div className="card-body">
                   <div className="display-4">{Number(analytics.averageCgpa || 0).toFixed(2)}</div>
                   <div className="text-muted">Across all students</div>
+                </div>
+              </div>
+
+              <div className="card shadow-sm mt-3">
+                <div className="card-header fw-semibold">AI Tools</div>
+                <div className="card-body">
+                  <div className="mb-3">
+                    <label className="form-label">Resume Upload (OpenAI Analysis)</label>
+                    <input type="file" className="form-control" onChange={(e) => setResumeFile(e.target.files[0])} />
+                    <select className="form-select mt-2" value={resumeStudentId} onChange={(e) => setResumeStudentId(e.target.value)}>
+                      <option value="">Select Student (optional)</option>
+                      {students.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                    <button className="btn btn-outline-primary w-100 mt-2" onClick={onUploadResume}>Analyze Resume</button>
+                  </div>
+                  {resumeAnalysis && (
+                    <div className="alert alert-info small" style={{ whiteSpace: 'pre-wrap' }}>
+                      {resumeAnalysis}
+                    </div>
+                  )}
+                  {resumeDetails && (
+                    <div className="mt-2 small">
+                      {resumeDetails.detectedSkills && <div><strong>Skills:</strong> {resumeDetails.detectedSkills}</div>}
+                      {resumeDetails.missingSkills && <div><strong>Missing:</strong> {resumeDetails.missingSkills}</div>}
+                      {resumeDetails.suggestions && <div><strong>Suggestions:</strong> {resumeDetails.suggestions}</div>}
+                      {resumeDetails.placementChance !== null && resumeDetails.placementChance !== undefined && (
+                        <div><strong>Placement Chance:</strong> {resumeDetails.placementChance}%</div>
+                      )}
+                    </div>
+                  )}
+
+                  {recommendations.length > 0 && (
+                    <div className="mt-3">
+                      <div className="fw-semibold mb-2">Recommended Companies {recommendedStudent && `for ${recommendedStudent}`}</div>
+                      <ul className="list-group">
+                        {recommendations.slice(0, 5).map((r) => (
+                          <li key={r.companyId} className="list-group-item d-flex justify-content-between">
+                            <span>{r.companyName}</span>
+                            <span>{r.eligible ? 'Eligible' : 'Low chance'} | Score: {r.score.toFixed(2)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -571,7 +738,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold d-flex justify-content-between">
                   <span>Students</span>
                   {loading.students && <span className="text-muted">Loading...</span>}
@@ -586,6 +753,8 @@ export default function App() {
                           <th role="button" onClick={() => toggleStudentSort('email')}>Email</th>
                           <th role="button" onClick={() => toggleStudentSort('branch')}>Branch</th>
                           <th role="button" onClick={() => toggleStudentSort('cgpa')}>CGPA</th>
+                          <th>Score</th>
+                          <th>Tag</th>
                           <th>Backlogs</th>
                           <th role="button" onClick={() => toggleStudentSort('placed')}>Placed</th>
                           <th>Company</th>
@@ -595,7 +764,7 @@ export default function App() {
                       <tbody>
                         {students.length === 0 && (
                           <tr>
-                            <td colSpan="9" className="text-center text-muted">No students found.</td>
+                            <td colSpan="11" className="text-center text-muted">No students found.</td>
                           </tr>
                         )}
                         {students.map((s) => (
@@ -605,6 +774,8 @@ export default function App() {
                             <td>{s.email}</td>
                             <td>{s.branch}</td>
                             <td>{s.cgpa}</td>
+                            <td>{s.placementScore ? `${s.placementScore.toFixed(1)}%` : '—'}</td>
+                            <td>{s.tag ? <span className="badge bg-info">{s.tag}</span> : '—'}</td>
                             <td>{s.backlogs}</td>
                             <td>{s.placed ? <span className="badge bg-success">Yes</span> : <span className="badge bg-secondary">No</span>}</td>
                             <td>{s.company ? s.company.name : '—'}</td>
@@ -613,6 +784,15 @@ export default function App() {
                                 <div className="btn-group">
                                   <button className="btn btn-sm btn-outline-secondary" onClick={() => onEditStudent(s)}>Edit</button>
                                   <button className="btn btn-sm btn-outline-danger" onClick={() => onDeleteStudent(s.id)}>Delete</button>
+                                </div>
+                              )}
+                              <div className="mt-2 d-flex gap-2">
+                                <button className="btn btn-sm btn-outline-primary" onClick={() => onPredict(s.id)}>Predict</button>
+                                <button className="btn btn-sm btn-outline-info" onClick={() => onRecommend(s.id)}>Recommend</button>
+                              </div>
+                              {predictionMap[s.id] !== undefined && (
+                                <div className="small text-muted mt-1">
+                                  Probability: {predictionMap[s.id].probability.toFixed(2)}% | {predictionMap[s.id].tag}
                                 </div>
                               )}
                             </td>
@@ -634,7 +814,7 @@ export default function App() {
             </div>
 
             <div className="col-lg-4">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold">{editingStudentId ? 'Edit Student' : 'Add Student'}</div>
                 <div className="card-body">
                   {canEdit ? (
@@ -700,7 +880,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold d-flex justify-content-between">
                   <span>Companies</span>
                   {loading.companies && <span className="text-muted">Loading...</span>}
@@ -773,7 +953,7 @@ export default function App() {
             </div>
 
             <div className="col-lg-4">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold">{editingCompanyId ? 'Edit Company' : 'Add Company'}</div>
                 <div className="card-body">
                   {canEdit ? (
@@ -815,7 +995,7 @@ export default function App() {
         {activeTab === 'placement' && (
           <div className="row g-4">
             <div className="col-lg-4">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold">Run Placement</div>
                 <div className="card-body">
                   {companiesAll.length === 0 ? (
@@ -829,6 +1009,7 @@ export default function App() {
                         ))}
                       </select>
                       {canEdit && <button className="btn btn-success w-100" onClick={onRunPlacement} disabled={loading.placement}>Run Placement</button>}
+                      {canEdit && <button className="btn btn-outline-primary w-100 mt-2" onClick={onRunSmartPlacement} disabled={loading.placement}>Run Smart Placement</button>}
                       <div className="text-muted small mt-2">Runs placement for unplaced students meeting the CGPA criteria.</div>
                     </div>
                   )}
@@ -887,7 +1068,7 @@ export default function App() {
             </div>
 
             <div className="col-lg-8">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold">Placements</div>
                 <div className="card-body">
                   <div className="table-responsive">
@@ -930,7 +1111,7 @@ export default function App() {
         {activeTab === 'reports' && (
           <div className="row">
             <div className="col-md-6">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold">Reports</div>
                 <div className="card-body d-grid gap-2">
                   <button className="btn btn-outline-primary" onClick={() => downloadFile(api.reportPlacementStats(), 'placement-stats.csv')}>Placement Statistics</button>
@@ -942,10 +1123,198 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'ai-insights' && (
+          <div className="row g-4">
+            <div className="col-lg-4">
+              <div className="card shadow-sm glass">
+                <div className="card-header fw-semibold">AI Insights</div>
+                <div className="card-body">
+                  {insights?.disabled && (
+                    <div className="alert alert-info">AI insights are disabled in settings.</div>
+                  )}
+                  <div className="mb-2">
+                    <div className="text-muted small">Top Branch (Avg CGPA)</div>
+                    <div className="fw-semibold">
+                      {insights?.topBranchByCgpa ? `${insights.topBranchByCgpa[0]} (${Number(insights.topBranchByCgpa[1]).toFixed(2)})` : '—'}
+                    </div>
+                  </div>
+                  <div className="mb-2">
+                    <div className="text-muted small">Top Company Hiring</div>
+                    <div className="fw-semibold">
+                      {insights?.topCompanyHiring ? `${insights.topCompanyHiring[0]} (${insights.topCompanyHiring[1]})` : '—'}
+                    </div>
+                  </div>
+                  <div className="mb-2">
+                    <div className="text-muted small">High Potential Students</div>
+                    <div className="fw-semibold">{insights?.highPotentialCount ?? 0}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card shadow-sm glass mt-3">
+                <div className="card-header fw-semibold">AI Query</div>
+                <div className="card-body">
+                  <form onSubmit={onAiQuery}>
+                    <input className="form-control" placeholder="e.g., List unplaced CSE students" value={aiQueryText}
+                           onChange={(e) => setAiQueryText(e.target.value)} />
+                    <button className="btn btn-outline-primary w-100 mt-2" type="submit">Ask</button>
+                  </form>
+                  {aiQueryResult && (
+                    <div className="mt-3">
+                      <div className="small text-muted">Filters: {JSON.stringify(aiQueryResult.filters)}</div>
+                      <ul className="list-group mt-2">
+                        {aiQueryResult.results.length === 0 && (
+                          <li className="list-group-item text-muted">No results</li>
+                        )}
+                        {aiQueryResult.results.map((s) => (
+                          <li key={s.id} className="list-group-item d-flex justify-content-between">
+                            <span>{s.name} ({s.branch})</span>
+                            <span>CGPA: {s.cgpa}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="col-lg-8">
+              <div className="card shadow-sm glass">
+                <div className="card-header fw-semibold">Placement Rate by Branch</div>
+                <div className="card-body" style={{ height: 320 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={placementByBranchInsights}>
+                      <XAxis dataKey="branch" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="rate" fill="#0d6efd" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="row">
+            <div className="col-lg-8">
+              <div className="card shadow-sm glass">
+                <div className="card-header fw-semibold">Settings</div>
+                <div className="card-body">
+                  {!settings ? (
+                    <div className="text-muted">Loading settings...</div>
+                  ) : (
+                    <form onSubmit={onUpdateSettings}>
+                      <div className="row g-3">
+                        <div className="col-md-6">
+                          <label className="form-label">Default Minimum CGPA</label>
+                          <input type="number" step="0.01" min="0" className="form-control"
+                                 value={settings.defaultMinCgpa ?? ''}
+                                 onChange={(e) => setSettings({ ...settings, defaultMinCgpa: Number(e.target.value) })} />
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">Allowed Branches (CSV)</label>
+                          <input className="form-control" value={settings.allowedBranches || ''}
+                                 onChange={(e) => setSettings({ ...settings, allowedBranches: e.target.value })} />
+                        </div>
+                        <div className="col-12">
+                          <div className="form-check">
+                            <input className="form-check-input" type="checkbox" checked={settings.oneStudentOneCompany}
+                                   onChange={(e) => setSettings({ ...settings, oneStudentOneCompany: e.target.checked })} />
+                            <label className="form-check-label">One student → one company</label>
+                          </div>
+                        </div>
+                        <div className="col-12">
+                          <div className="fw-semibold mb-2">AI Features</div>
+                          <div className="row g-2">
+                            <div className="col-md-6">
+                              <div className="form-check">
+                                <input className="form-check-input" type="checkbox" checked={settings.aiPredictionEnabled}
+                                       onChange={(e) => setSettings({ ...settings, aiPredictionEnabled: e.target.checked })} />
+                                <label className="form-check-label">Placement Prediction</label>
+                              </div>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="form-check">
+                                <input className="form-check-input" type="checkbox" checked={settings.aiRecommendationEnabled}
+                                       onChange={(e) => setSettings({ ...settings, aiRecommendationEnabled: e.target.checked })} />
+                                <label className="form-check-label">Company Recommendations</label>
+                              </div>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="form-check">
+                                <input className="form-check-input" type="checkbox" checked={settings.aiResumeEnabled}
+                                       onChange={(e) => setSettings({ ...settings, aiResumeEnabled: e.target.checked })} />
+                                <label className="form-check-label">Resume Analyzer</label>
+                              </div>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="form-check">
+                                <input className="form-check-input" type="checkbox" checked={settings.aiQueryEnabled}
+                                       onChange={(e) => setSettings({ ...settings, aiQueryEnabled: e.target.checked })} />
+                                <label className="form-check-label">Natural Language Query</label>
+                              </div>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="form-check">
+                                <input className="form-check-input" type="checkbox" checked={settings.aiInsightsEnabled}
+                                       onChange={(e) => setSettings({ ...settings, aiInsightsEnabled: e.target.checked })} />
+                                <label className="form-check-label">AI Insights</label>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {isAdmin ? (
+                        <button className="btn btn-primary mt-3" type="submit">Save Settings</button>
+                      ) : (
+                        <div className="text-muted mt-3">Only admin can update settings.</div>
+                      )}
+                    </form>
+                  )}
+
+                  <div className="mt-4">
+                    <div className="fw-semibold">Dataset</div>
+                    <div className="text-muted small">Hourly auto-refresh enabled. Use manual refresh if needed.</div>
+                    {canEdit && (
+                      <button className="btn btn-outline-warning mt-2" onClick={() => api.refreshDataset().then(refreshAll).catch((e) => setError(e.message))}>
+                        Refresh Dataset Now
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="fw-semibold">OpenAI</div>
+                    <div className="text-muted small">Set OPENAI_API_KEY in backend environment to enable resume analysis.</div>
+                    <div className="small">Status: {systemStatus.openaiKeyConfigured ? 'Configured' : 'Missing'}</div>
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="fw-semibold">Account</div>
+                    <div className="text-muted small">Logged in as {auth.username} ({auth.role}).</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="col-lg-4">
+              <div className="card shadow-sm glass">
+                <div className="card-header fw-semibold">Quick Links</div>
+                <div className="card-body d-grid gap-2">
+                  <button className="btn btn-outline-primary" onClick={() => setActiveTab('dashboard')}>Go to Dashboard</button>
+                  <button className="btn btn-outline-primary" onClick={() => setActiveTab('students')}>Manage Students</button>
+                  <button className="btn btn-outline-primary" onClick={() => setActiveTab('companies')}>Manage Companies</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'notifications' && (
           <div className="row">
             <div className="col-lg-8">
-              <div className="card shadow-sm">
+              <div className="card shadow-sm glass">
                 <div className="card-header fw-semibold">Notifications</div>
                 <div className="card-body">
                   <ul className="list-group">
@@ -971,5 +1340,9 @@ export default function App() {
         )}
       </div>
     </div>
+  </div>
   );
 }
+
+
+

@@ -40,6 +40,11 @@ public class Student {
     @JoinColumn(name = "company_id")
     private Company company;
 
+    private Double placementScore;
+
+    @Column(length = 50)
+    private String tag;
+
     public Long getId() {
         return id;
     }
@@ -102,5 +107,21 @@ public class Student {
 
     public void setCompany(Company company) {
         this.company = company;
+    }
+
+    public Double getPlacementScore() {
+        return placementScore;
+    }
+
+    public void setPlacementScore(Double placementScore) {
+        this.placementScore = placementScore;
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    public void setTag(String tag) {
+        this.tag = tag;
     }
 }

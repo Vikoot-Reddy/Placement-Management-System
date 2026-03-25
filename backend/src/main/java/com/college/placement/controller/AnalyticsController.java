@@ -1,6 +1,7 @@
 package com.college.placement.controller;
 
 import com.college.placement.service.AnalyticsService;
+import com.college.placement.service.SystemSettingsService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,9 +15,12 @@ import java.util.Map;
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
+    private final SystemSettingsService settingsService;
 
-    public AnalyticsController(AnalyticsService analyticsService) {
+    public AnalyticsController(AnalyticsService analyticsService,
+                               SystemSettingsService settingsService) {
         this.analyticsService = analyticsService;
+        this.settingsService = settingsService;
     }
 
     @GetMapping("/overview")
@@ -35,5 +39,13 @@ public class AnalyticsController {
     @GetMapping("/placed-per-company")
     public List<Object[]> placedPerCompany() {
         return analyticsService.placedPerCompany();
+    }
+
+    @GetMapping("/insights")
+    public Map<String, Object> insights() {
+        if (!settingsService.getSettings().isAiInsightsEnabled()) {
+            return Map.of("disabled", true);
+        }
+        return analyticsService.aiInsights();
     }
 }

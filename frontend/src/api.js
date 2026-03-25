@@ -60,6 +60,33 @@ export const api = {
   getUnreadNotifications: () => request('/notifications/unread'),
   markNotificationRead: (id) => request(`/notifications/mark-read/${id}`, { method: 'POST' }),
 
+  predictPlacement: (studentId) => request(`/ai/predict/${studentId}`),
+  recommendCompanies: (studentId) => request(`/ai/recommend/${studentId}`),
+  aiQuery: (payload) => request('/ai/query', { method: 'POST', body: JSON.stringify(payload) }),
+  getInsights: () => request('/analytics/insights'),
+
+  uploadResume: async (file, studentId) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (studentId) formData.append('studentId', studentId);
+    const res = await fetch(`${API_BASE}/ai/analyze-resume`, {
+      method: 'POST',
+      headers: { ...authHeader() },
+      body: formData
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Request failed: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  refreshDataset: () => request('/admin/refresh-dataset', { method: 'POST' }),
+  getStatus: () => request('/admin/status'),
+  getSettings: () => request('/settings'),
+  updateSettings: (payload) => request('/settings', { method: 'PUT', body: JSON.stringify(payload) }),
+  runSmartPlacement: () => request('/placement/smart-run', { method: 'POST' }),
+
   reportPlacementStats: () => `${API_BASE}/reports/placement-stats.csv`,
   reportCompanyWise: () => `${API_BASE}/reports/company-wise.csv`,
   reportBranchWise: () => `${API_BASE}/reports/branch-wise.csv`

@@ -30,15 +30,25 @@ public class PlacementController {
 
     @PostMapping("/placement/assign")
     public ResponseEntity<Placement> assign(@RequestBody PlacementAssignRequest request) {
-        Placement placement = placementService.assignPlacement(request);
-        if (placement == null) {
+        try {
+            Placement placement = placementService.assignPlacement(request);
+            if (placement == null) {
+                return ResponseEntity.badRequest().build();
+            }
+            return ResponseEntity.ok(placement);
+        } catch (IllegalStateException ex) {
             return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(placement);
     }
 
     @GetMapping("/placement/all")
     public List<Placement> allPlacements() {
         return placementService.getAllPlacements();
+    }
+
+    @PostMapping("/placement/smart-run")
+    public ResponseEntity<Integer> smartPlacement() {
+        int count = placementService.runSmartPlacement();
+        return ResponseEntity.ok(count);
     }
 }

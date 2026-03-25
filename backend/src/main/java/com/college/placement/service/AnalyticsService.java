@@ -42,4 +42,34 @@ public class AnalyticsService {
         return entityManager.createQuery("select c.name, count(s) from Student s join s.company c where s.placed = true group by c.name", Object[].class)
                 .getResultList();
     }
+
+    public Map<String, Object> aiInsights() {
+        Map<String, Object> insights = new HashMap<>();
+
+        List<Object[]> placementByBranch = entityManager.createQuery(
+                "select s.branch, sum(case when s.placed = true then 1 else 0 end), count(s) from Student s group by s.branch",
+                Object[].class
+        ).getResultList();
+        insights.put("placementByBranch", placementByBranch);
+
+        List<Object[]> topBranch = entityManager.createQuery(
+                "select s.branch, avg(s.cgpa) from Student s group by s.branch order by avg(s.cgpa) desc",
+                Object[].class
+        ).setMaxResults(1).getResultList();
+        insights.put("topBranchByCgpa", topBranch.isEmpty() ? null : topBranch.get(0));
+
+        List<Object[]> topCompany = entityManager.createQuery(
+                "select c.name, count(p) from Placement p join p.company c group by c.name order by count(p) desc",
+                Object[].class
+        ).setMaxResults(1).getResultList();
+        insights.put("topCompanyHiring", topCompany.isEmpty() ? null : topCompany.get(0));
+
+        Long highPotential = entityManager.createQuery(
+                "select count(s) from Student s where s.tag = 'High Potential'",
+                Long.class
+        ).getSingleResult();
+        insights.put("highPotentialCount", highPotential);
+
+        return insights;
+    }
 }
